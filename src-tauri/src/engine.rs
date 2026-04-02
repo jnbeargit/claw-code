@@ -57,12 +57,12 @@ impl TauriRuntimeClient {
     fn convert_messages(messages: &[runtime::ConversationMessage]) -> Vec<InputMessage> {
         messages
             .iter()
+            .filter(|msg| !matches!(msg.role, runtime::MessageRole::System))
             .map(|msg| InputMessage {
                 role: match msg.role {
-                    runtime::MessageRole::User => "user".to_string(),
+                    runtime::MessageRole::User | runtime::MessageRole::Tool => "user".to_string(),
                     runtime::MessageRole::Assistant => "assistant".to_string(),
-                    runtime::MessageRole::System => "system".to_string(),
-                    runtime::MessageRole::Tool => "tool".to_string(),
+                    runtime::MessageRole::System => unreachable!(),
                 },
                 content: msg
                     .blocks
