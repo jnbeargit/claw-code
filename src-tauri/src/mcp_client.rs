@@ -38,10 +38,15 @@ pub struct McpClient {
 
 impl McpClient {
     pub fn new(url: String, api_key: String) -> Self {
+        // Ensure URL has trailing slash (servers redirect without it and POST redirects fail)
+        let url = if url.ends_with('/') { url } else { format!("{}/", url) };
         Self {
             url,
             api_key,
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::limited(5))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
             request_id: Arc::new(Mutex::new(1)),
             session_id: Arc::new(Mutex::new(None)),
         }
