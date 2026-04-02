@@ -161,8 +161,15 @@ impl ApiClient for TauriRuntimeClient {
                                 input.push_str(&partial_json);
                             }
                         }
-                        ContentBlockDelta::ThinkingDelta { .. }
-                        | ContentBlockDelta::SignatureDelta { .. } => {}
+                        ContentBlockDelta::ThinkingDelta { thinking } => {
+                            if !thinking.is_empty() && self.emit_output {
+                                let _ = self.app_handle.emit(
+                                    &format!("chat-thinking-delta:{}", self.session_id),
+                                    &thinking,
+                                );
+                            }
+                        }
+                        ContentBlockDelta::SignatureDelta { .. } => {}
                     },
                     StreamEvent::ContentBlockStop(_) => {
                         if let Some((id, name, input)) = pending_tool.take() {
