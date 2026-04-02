@@ -1,73 +1,126 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { ChatMessage } from '@/types';
 
 export function useChat(workspaceId: string | null, sessionId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [currentStream, setCurrentStream] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const unlistenRefs = useRef<UnlistenFn[]>([]);
 
+  // Set up event listeners once and keep them stable
   useEffect(() => {
-    if (!workspaceId) return;
+    if (!sessionId) return;
 
-    // Load chat history
-    const loadHistory = async () => {
-      try {
-        const history = await invoke<ChatMessage[]>('chat_get_history', {
-          sessionId,
-        });
-        setMessages(history);
-      } catch (err) {
-        console.error('Failed to load chat history:', err);
+    const setupListeners = async () => {
+      // Clean up old listeners
+      for (const fn of unlistenRefs.current) {
+        fn();
       }
+      unlistenRefs.current = [];
+
+      const u1 = await listen<string>(
+        `chat-stream-delta:${sessionId}`,
+        (event) => {
+          setStreaming(true);
+          setCurrentStream((prev) => prev + event.payload);
+        }
+      );
+
+      const u2 = await listen<string>(
+        `chat-complete:${sessionId}`,
+        (event) => {
+          setStreaming(false);
+          // The complete event payload is the full text
+          const fullText = event.payload || '';
+          if (fullText) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: fullText,
+                timestamp: Math.floor(Date.now() / 1000),
+              },
+            ]);
+          }
+          setCurrentStream('');
+        }
+      );
+
+      const u3 = await listen<string>(
+        `chat-error:${sessionId}`,
+        (event) => {
+          console.error('[useChat] error event:', event.payload);
+          setError(event.payload);
+          setStreaming(false);
+          setCurrentStream('');
+        }
+      );
+
+      const u4 = await listen<any>(
+        `chat-tool-use:${sessionId}`,
+        (event) => {
+          console.log('[useChat] tool-use:', event.payload);
+          // We could show tool calls in the UI here
+        }
+      );
+
+      const u5 = await listen<any>(
+        `chat-tool-result:${sessionId}`,
+        (event) => {
+          console.log('[useChat] tool-result:', event.payload);
+        }
+      );
+
+      unlistenRefs.current = [u1, u2, u3, u4, u5];
     };
 
-    loadHistory();
-
-    // Listen to streaming events
-    const unlistenDelta = listen<string>(
-      `chat-stream-delta:${sessionId}`,
-      (event) => {
-        setStreaming(true);
-        setCurrentStream((prev) => prev + event.payload);
-      }
-    );
-
-    const unlistenComplete = listen(`chat-complete:${sessionId}`, () => {
-      setStreaming(false);
-      setCurrentStream('');
-      loadHistory(); // Reload to get full message
-    });
-
-    const unlistenError = listen<string>(`chat-error:${sessionId}`, (event) => {
-      console.error('Chat error:', event.payload);
-      setStreaming(false);
-    });
+    setupListeners();
 
     return () => {
-      unlistenDelta.then((fn) => fn());
-      unlistenComplete.then((fn) => fn());
-      unlistenError.then((fn) => fn());
+      for (const fn of unlistenRefs.current) {
+        fn();
+      }
+      unlistenRefs.current = [];
     };
-  }, [workspaceId, sessionId]);
+  }, [sessionId]);
 
   const sendMessage = useCallback(
     async (message: string) => {
       if (!workspaceId) return;
 
+      setError(null);
       setCurrentStream('');
       setStreaming(true);
 
+      // Immediately add user message to UI
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          role: 'user',
+          content: message,
+          timestamp: Math.floor(Date.now() / 1000),
+        },
+      ]);
+
       try {
+        // This call blocks until the full tool loop is done
         await invoke('chat_send_message', {
           workspaceId,
           sessionId,
           message,
         });
-      } catch (err) {
-        console.error('Failed to send message:', err);
+        // If streaming didn't produce a complete event, force stop
         setStreaming(false);
+      } catch (err) {
+        console.error('[useChat] send failed:', err);
+        setError(err as string);
+        setStreaming(false);
+        setCurrentStream('');
       }
     },
     [workspaceId, sessionId]
@@ -77,8 +130,9 @@ export function useChat(workspaceId: string | null, sessionId: string) {
     try {
       await invoke('chat_clear_history', { sessionId });
       setMessages([]);
+      setCurrentStream('');
     } catch (err) {
-      console.error('Failed to clear history:', err);
+      console.error('[useChat] clear failed:', err);
     }
   }, [sessionId]);
 
@@ -86,6 +140,7 @@ export function useChat(workspaceId: string | null, sessionId: string) {
     messages,
     streaming,
     currentStream,
+    error,
     sendMessage,
     clearHistory,
   };

@@ -167,6 +167,7 @@ impl McpClient {
     }
 
     pub async fn initialize(&self) -> Result<(), String> {
+        eprintln!("[MCP] Initializing connection to: {}", self.url);
         let params = json!({
             "protocolVersion": "2024-11-05",
             "capabilities": {},
@@ -176,7 +177,11 @@ impl McpClient {
             }
         });
 
-        let _result = self.send_request("initialize", Some(params)).await?;
+        let _result = self.send_request("initialize", Some(params)).await.map_err(|e| {
+            eprintln!("[MCP] Initialize failed: {}", e);
+            e
+        })?;
+        eprintln!("[MCP] Initialize succeeded");
 
         // Send initialized notification
         let id = self.next_id().await;
@@ -215,7 +220,11 @@ impl McpClient {
     }
 
     pub async fn list_tools(&self) -> Result<Vec<McpTool>, String> {
-        let result = self.send_request("tools/list", Some(json!({}))).await?;
+        eprintln!("[MCP] Listing tools...");
+        let result = self.send_request("tools/list", Some(json!({}))).await.map_err(|e| {
+            eprintln!("[MCP] tools/list failed: {}", e);
+            e
+        })?;
 
         let tools_array = result
             .get("tools")
@@ -228,6 +237,7 @@ impl McpClient {
             .filter_map(|tool| serde_json::from_value(tool.clone()).ok())
             .collect();
 
+        eprintln!("[MCP] Found {} tools", tools.len());
         Ok(tools)
     }
 

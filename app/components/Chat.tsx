@@ -44,11 +44,13 @@ export function Chat({ workspace, sessionId, connected, tools, isHome, onStartCh
     const message = input.trim();
     setInput('');
     
-    // Switch to chat view if on home
+    // Switch to chat view FIRST, then send (so listeners are active)
     if (isHome) {
       onStartChat();
     }
 
+    // Small delay to ensure event listeners are set up after view switch
+    await new Promise(r => setTimeout(r, 50));
     await sendMessage(message);
   };
 
