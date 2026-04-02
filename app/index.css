@@ -2,35 +2,140 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-bg-main text-text-primary font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg-main;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-text-tertiary rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-secondary;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer components {
+  /* Nav item styles */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 h-9 text-sm text-text-primary rounded-md cursor-pointer transition-colors;
+  }
+
+  .nav-item:hover {
+    @apply bg-bg-hover;
+  }
+
+  .nav-item.active {
+    @apply bg-bg-hover border-l-2 border-accent-blue;
+  }
+
+  /* Input styles */
+  .input-field {
+    @apply w-full h-10 px-3 bg-bg-main border border-border rounded-lg text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-border transition-colors;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply px-4 py-2 bg-text-primary text-bg-main rounded-full font-medium text-sm transition-opacity hover:opacity-90 disabled:opacity-30;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 border border-border rounded-lg text-sm text-text-primary transition-colors hover:bg-bg-hover;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-bg-card border border-border rounded-2xl;
+  }
+
+  /* Message bubble */
+  .message-user {
+    @apply bg-bg-card rounded-2xl px-4 py-3 max-w-[85%] ml-auto;
+  }
+
+  .message-assistant {
+    @apply max-w-[85%] mr-auto;
+  }
+
+  /* Tool panel */
+  .tool-card {
+    @apply border border-border rounded-xl p-4 bg-bg-main;
+  }
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+@layer utilities {
+  /* Text utilities */
+  .text-muted {
+    @apply text-text-secondary;
+  }
 
-::-webkit-scrollbar-track {
-  background: #1f2937;
-}
+  .text-tertiary {
+    @apply text-text-tertiary;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 4px;
-}
+  /* Truncate text */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  /* Drag region for macOS */
+  .drag-region {
+    -webkit-app-region: drag;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }

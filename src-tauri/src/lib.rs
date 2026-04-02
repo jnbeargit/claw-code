@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(mcp_client::McpConnections::new(Mutex::new(HashMap::new())))
         .manage(chat::ChatSessions::new(Mutex::new(HashMap::new())))
         .invoke_handler(tauri::generate_handler![
@@ -20,6 +21,8 @@ pub fn run() {
             workspace::update_workspace,
             workspace::delete_workspace,
             workspace::get_workspace,
+            workspace::import_mcpb_bundle,
+            workspace::peek_mcpb_bundle,
             // MCP commands
             mcp_client::mcp_connect,
             mcp_client::mcp_disconnect,

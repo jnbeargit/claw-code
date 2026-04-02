@@ -1,50 +1,47 @@
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { ChatMessage } from '@/types';
 import { ToolPanel } from './ToolPanel';
+import type { ChatMessage } from '@/types';
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  streaming?: boolean;
 }
 
-export function MessageBubble({ message, streaming }: MessageBubbleProps) {
-  const isUser = message.role === 'user';
+export function MessageBubble({ message }: MessageBubbleProps) {
+  if (message.role === 'user') {
+    return (
+      <div className="message-user">
+        <div className="text-[15px] leading-relaxed whitespace-pre-wrap">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`
-          max-w-[80%] rounded-lg p-4
-          ${isUser ? 'bg-blue-600' : 'bg-gray-800'}
-          ${streaming ? 'animate-pulse' : ''}
-        `}
-      >
-        {isUser ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
-        ) : (
-          <>
-            <div className="prose prose-invert prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
-              </ReactMarkdown>
+    <div className="message-assistant">
+      <div className="flex gap-3">
+        {/* Avatar */}
+        <div className="w-6 h-6 rounded-full bg-accent-blue flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          AI
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 space-y-4">
+          {/* Main message */}
+          {message.content && (
+            <div className="text-[15px] leading-relaxed whitespace-pre-wrap text-text-primary">
+              {message.content}
             </div>
-
-            {message.tool_calls && message.tool_calls.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {message.tool_calls.map((toolCall) => (
-                  <ToolPanel key={toolCall.id} toolCall={toolCall} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {!streaming && (
-          <div className="mt-2 text-xs text-gray-400">
-            {new Date(message.timestamp).toLocaleTimeString()}
-          </div>
-        )}
+          )}
+          
+          {/* Tool calls */}
+          {message.tool_calls && message.tool_calls.length > 0 && (
+            <div className="space-y-3">
+              {message.tool_calls.map((toolCall) => (
+                <ToolPanel key={toolCall.id} toolCall={toolCall} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

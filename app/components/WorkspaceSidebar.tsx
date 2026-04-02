@@ -1,106 +1,192 @@
 import { useState } from 'react';
-import { Plus, MoreVertical } from 'lucide-react';
+import { Plus, Search, FolderOpen, Settings, ChevronDown, ChevronUp, Check, FileUp } from 'lucide-react';
 import type { Workspace } from '@/types';
-import { WorkspaceSetup } from './WorkspaceSetup';
 
 interface WorkspaceSidebarProps {
   workspaces: Workspace[];
-  activeWorkspace: Workspace | null;
-  onSelectWorkspace: (workspace: Workspace) => void;
+  currentWorkspace: Workspace | null;
   connected: boolean;
+  onWorkspaceSelect: (workspace: Workspace) => void;
+  onNewWorkspace: () => void;
+  onImportBundle: () => void;
+  onNewChat: () => void;
+  onSettings: () => void;
+  onSearch: () => void;
 }
 
 export function WorkspaceSidebar({
   workspaces,
-  activeWorkspace,
-  onSelectWorkspace,
+  currentWorkspace,
   connected,
+  onWorkspaceSelect,
+  onNewWorkspace,
+  onImportBundle,
+  onNewChat,
+  onSettings,
+  onSearch,
 }: WorkspaceSidebarProps) {
-  const [showSetup, setShowSetup] = useState(false);
-  const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((word) => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'bg-blue-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-green-500',
+      'bg-yellow-500',
+      'bg-red-500',
+    ];
+    const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[index % colors.length];
+  };
 
   return (
-    <>
-      <div className="w-64 bg-gray-950 border-r border-gray-800 flex flex-col">
-        <div className="h-14 border-b border-gray-800 flex items-center justify-between px-4">
-          <h2 className="font-semibold">Workspaces</h2>
-          <button
-            onClick={() => setShowSetup(true)}
-            className="p-1 hover:bg-gray-800 rounded transition-colors"
-            title="Add workspace"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
+    <div className="w-[260px] bg-bg-sidebar border-r border-border flex flex-col h-full">
+      {/* Navigation */}
+      <div className="p-3 space-y-1">
+        <button onClick={onNewChat} className="nav-item w-full">
+          <Plus className="w-4 h-4" />
+          <span>New chat</span>
+        </button>
+        
+        <button onClick={onSearch} className="nav-item w-full">
+          <Search className="w-4 h-4" />
+          <span>Search</span>
+        </button>
+        
+        <button onClick={onNewWorkspace} className="nav-item w-full">
+          <FolderOpen className="w-4 h-4" />
+          <span>Workspaces</span>
+        </button>
+        
+        <button onClick={onImportBundle} className="nav-item w-full">
+          <FileUp className="w-4 h-4" />
+          <span>Import .mcpb</span>
+        </button>
+        
+        <button onClick={onSettings} className="nav-item w-full">
+          <Settings className="w-4 h-4" />
+          <span>Settings</span>
+        </button>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-border mx-3" />
+
+      {/* Recents */}
+      <div className="flex-1 overflow-y-auto p-3">
+        <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-2">
+          Recents
         </div>
-
-        <div className="flex-1 overflow-y-auto p-2">
-          {workspaces.length === 0 ? (
-            <div className="text-center text-gray-400 py-8 px-4 text-sm">
-              <p>No workspaces yet.</p>
-              <p className="mt-2">Click + to create one.</p>
-            </div>
-          ) : (
-            workspaces.map((workspace) => {
-              const isActive = activeWorkspace?.id === workspace.id;
-              const isConnected = isActive && connected;
-
-              return (
-                <div
-                  key={workspace.id}
-                  className={`
-                    group relative p-3 rounded-lg cursor-pointer transition-colors mb-2
-                    ${isActive ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-800 hover:bg-gray-700'}
-                  `}
-                  onClick={() => onSelectWorkspace(workspace)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span
-                        className={`
-                          w-2 h-2 rounded-full flex-shrink-0
-                          ${isConnected ? 'bg-green-400' : 'bg-gray-600'}
-                        `}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{workspace.name}</div>
-                        <div className="text-xs text-gray-400 truncate mt-0.5">
-                          {workspace.llm_provider}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingWorkspace(workspace);
-                        setShowSetup(true);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-600 rounded transition-opacity"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        <div className="p-4 border-t border-gray-800 text-xs text-gray-400">
-          <div>Norg Desktop v0.1.0</div>
-          <div className="mt-1">{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</div>
+        
+        {/* Placeholder for recent chats */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 px-3 py-2 text-sm text-text-secondary rounded-md hover:bg-bg-hover cursor-pointer">
+            <div className="w-2 h-2 rounded-full bg-accent-blue" />
+            <span className="truncate">Current session</span>
+          </div>
         </div>
       </div>
 
-      {showSetup && (
-        <WorkspaceSetup
-          workspace={editingWorkspace}
-          onClose={() => {
-            setShowSetup(false);
-            setEditingWorkspace(null);
-          }}
-        />
-      )}
-    </>
+      {/* MCP Tools note */}
+      <div className="px-3 pb-3">
+        <p className="text-xs text-text-tertiary">
+          Connect MCP servers to enable tools
+        </p>
+      </div>
+
+      {/* Workspace info card */}
+      <div className="p-3 pt-0 relative">
+        <button
+          onClick={() => setShowWorkspaceSwitcher(!showWorkspaceSwitcher)}
+          className="w-full p-3 rounded-lg bg-bg-card border border-border hover:bg-bg-hover transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            {/* Avatar */}
+            <div className={`w-8 h-8 rounded-full ${getAvatarColor(currentWorkspace?.name || 'N')} flex items-center justify-center text-white text-xs font-semibold`}>
+              {currentWorkspace ? getInitials(currentWorkspace.name) : 'N'}
+            </div>
+            
+            {/* Workspace info */}
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-sm font-semibold text-text-primary truncate">
+                {currentWorkspace?.name || 'No workspace'}
+              </div>
+              <div className="text-xs text-text-secondary flex items-center gap-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-accent-green' : 'bg-text-tertiary'}`} />
+                <span>{connected ? 'Connected' : 'Disconnected'}</span>
+              </div>
+            </div>
+            
+            {/* Chevron */}
+            {showWorkspaceSwitcher ? (
+              <ChevronUp className="w-4 h-4 text-text-secondary" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-text-secondary" />
+            )}
+          </div>
+        </button>
+
+        {/* Workspace switcher dropdown */}
+        {showWorkspaceSwitcher && (
+          <div className="absolute bottom-full left-3 right-3 mb-2 p-2 bg-bg-card border border-border rounded-lg shadow-xl animate-slide-up">
+            <div className="max-h-64 overflow-y-auto space-y-1">
+              {workspaces.map((workspace) => (
+                <button
+                  key={workspace.id}
+                  onClick={() => {
+                    onWorkspaceSelect(workspace);
+                    setShowWorkspaceSwitcher(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-bg-hover transition-colors"
+                >
+                  <div className={`w-6 h-6 rounded-full ${getAvatarColor(workspace.name)} flex items-center justify-center text-white text-xs font-semibold`}>
+                    {getInitials(workspace.name)}
+                  </div>
+                  <span className="flex-1 text-left text-sm truncate">
+                    {workspace.name}
+                  </span>
+                  {currentWorkspace?.id === workspace.id && (
+                    <Check className="w-4 h-4 text-accent-green" />
+                  )}
+                </button>
+              ))}
+            </div>
+            
+            {/* Add workspace */}
+            <div className="h-px bg-border my-2" />
+            <button
+              onClick={() => {
+                onNewWorkspace();
+                setShowWorkspaceSwitcher(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-bg-hover transition-colors text-text-primary"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm">Add workspace</span>
+            </button>
+            <button
+              onClick={() => {
+                onImportBundle();
+                setShowWorkspaceSwitcher(false);
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-bg-hover transition-colors text-text-primary"
+            >
+              <FileUp className="w-4 h-4" />
+              <span className="text-sm">Import .mcpb bundle</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

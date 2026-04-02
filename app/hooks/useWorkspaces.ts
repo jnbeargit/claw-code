@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 import type { Workspace } from '@/types';
 
 export function useWorkspaces() {
@@ -75,6 +76,48 @@ export function useWorkspaces() {
     }
   };
 
+  const importBundle = async (llmConfig: {
+    llm_provider: string;
+    llm_api_key: string;
+    llm_model: string;
+  }) => {
+    const selected = await open({
+      multiple: false,
+      filters: [{ name: 'MCP Bundle', extensions: ['mcpb'] }],
+    });
+
+    if (!selected) return null;
+
+    const filePath = typeof selected === 'string' ? selected : selected;
+    try {
+      const result = await invoke<{
+        workspace: Workspace;
+        display_name: string;
+        description: string;
+        tool_count: number | null;
+      }>('import_mcpb_bundle', {
+        filePath: filePath,
+        llmProvider: llmConfig.llm_provider,
+        llmApiKey: llmConfig.llm_api_key,
+        llmModel: llmConfig.llm_model,
+      });
+      setWorkspaces((prev) => [...prev, result.workspace]);
+      return result;
+    } catch (err) {
+      throw new Error(err as string);
+    }
+  };
+
+  const peekBundle = async (filePath: string) => {
+    return invoke<{
+      name: string;
+      display_name: string;
+      description: string;
+      version: string;
+      mcp_url: string;
+    }>('peek_mcpb_bundle', { filePath });
+  };
+
   return {
     workspaces,
     loading,
@@ -82,6 +125,8 @@ export function useWorkspaces() {
     createWorkspace,
     updateWorkspace,
     deleteWorkspace,
+    importBundle,
+    peekBundle,
     reload: loadWorkspaces,
   };
 }
