@@ -5,3 +5,13 @@ archive/
 # Claude Code local artifacts
 .claude/settings.local.json
 .claude/sessions/
+
+# Tauri / Rust
+src-tauri/target/
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
