@@ -16,7 +16,6 @@ use crate::mcp_client::McpClient;
 
 /// Custom ApiClient that emits Tauri events instead of writing to stdout
 pub struct TauriRuntimeClient {
-    runtime: tokio::runtime::Runtime,
     client: ClawApiClient,
     model: String,
     tool_definitions: Vec<ToolDefinition>,
@@ -35,13 +34,7 @@ impl TauriRuntimeClient {
     ) -> Result<Self, String> {
         let client = ClawApiClient::from_auth(AuthSource::ApiKey(api_key));
 
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| format!("Failed to create runtime: {}", e))?;
-
         Ok(Self {
-            runtime,
             client,
             model,
             tool_definitions,
@@ -116,8 +109,9 @@ impl ApiClient for TauriRuntimeClient {
             stream: true,
         };
         
-        self.runtime.block_on(async {
-            
+        // Use block_in_place since we're called from within Tauri's async runtime
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
             let mut stream = self
                 .client
                 .stream_message(&message_request)
@@ -212,7 +206,8 @@ impl ApiClient for TauriRuntimeClient {
             }
 
             Ok(events)
-        })
+        }) // block_on
+        }) // block_in_place
     }
 }
 
@@ -259,9 +254,10 @@ impl ToolExecutor for TauriToolExecutor {
             Err(_) => {
                 // If not a built-in tool, try MCP
                 if let Some(mcp) = &self.mcp_client {
-                    // Need to block_on since ToolExecutor is sync
-                    let rt = tokio::runtime::Handle::current();
-                    let result = rt.block_on(mcp.call_tool(tool_name, value));
+                    // Need to block_in_place since ToolExecutor is sync but we're inside async
+                    let result = tokio::task::block_in_place(|| {
+                        tokio::runtime::Handle::current().block_on(mcp.call_tool(tool_name, value))
+                    });
 
                     match result {
                         Ok(result_val) => {

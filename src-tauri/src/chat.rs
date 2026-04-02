@@ -172,11 +172,13 @@ pub async fn chat_send_message(
         system_prompt,
     );
 
-    // Run a single turn
+    // Run a single turn — block_in_place because ConversationRuntime is sync
     let mut prompter = permission_prompter;
-    let summary = runtime
-        .run_turn(&message, Some(&mut prompter))
-        .map_err(|e| format!("Runtime error: {}", e))?;
+    let summary = tokio::task::block_in_place(|| {
+        runtime
+            .run_turn(&message, Some(&mut prompter))
+            .map_err(|e| format!("Runtime error: {}", e))
+    })?;
 
     // Extract the updated session from the runtime
     let session = runtime.session().clone();
