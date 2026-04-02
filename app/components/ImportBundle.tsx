@@ -17,16 +17,23 @@ interface BundleInfo {
   mcp_url: string;
 }
 
+interface ModelInfo {
+  id: string;
+  name: string;
+}
+
 export function ImportBundle({ onImported, onCancel }: ImportBundleProps) {
   const [filePath, setFilePath] = useState<string | null>(null);
   const [bundleInfo, setBundleInfo] = useState<BundleInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [llmConfig, setLlmConfig] = useState({
     llm_provider: 'anthropic',
     llm_api_key: '',
-    llm_model: 'claude-sonnet-4-5-20250929',
+    llm_model: '',
   });
 
   const handleSelectFile = async () => {
@@ -169,29 +176,68 @@ export function ImportBundle({ onImported, onCancel }: ImportBundleProps) {
 
                   <div>
                     <label className="block text-sm font-medium text-text-primary mb-2">
-                      Model
-                    </label>
-                    <input
-                      type="text"
-                      value={llmConfig.llm_model}
-                      onChange={(e) => setLlmConfig(prev => ({ ...prev, llm_model: e.target.value }))}
-                      placeholder={llmConfig.llm_provider === 'anthropic' ? 'claude-sonnet-4-5-20250929' : 'gpt-4'}
-                      className="input-field"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-text-primary mb-2">
                       {llmConfig.llm_provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API Key
                     </label>
                     <input
                       type="password"
                       value={llmConfig.llm_api_key}
-                      onChange={(e) => setLlmConfig(prev => ({ ...prev, llm_api_key: e.target.value }))}
+                      onChange={(e) => {
+                        const key = e.target.value;
+                        setLlmConfig(prev => ({ ...prev, llm_api_key: key }));
+                        setModels([]);
+                        setLlmConfig(prev => ({ ...prev, llm_api_key: key, llm_model: '' }));
+                      }}
+                      onBlur={async () => {
+                        if (llmConfig.llm_api_key.length > 10) {
+                          setLoadingModels(true);
+                          try {
+                            const result = await invoke<{ models: ModelInfo[] }>('list_models', {
+                              provider: llmConfig.llm_provider,
+                              apiKey: llmConfig.llm_api_key,
+                            });
+                            setModels(result.models);
+                            if (result.models.length > 0 && !llmConfig.llm_model) {
+                              setLlmConfig(prev => ({ ...prev, llm_model: result.models[0].id }));
+                            }
+                          } catch (err) {
+                            setError(`Invalid API key: ${err}`);
+                          } finally {
+                            setLoadingModels(false);
+                          }
+                        }
+                      }}
                       placeholder="sk-..."
                       className="input-field"
                       required
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">
+                      Model {loadingModels && <Loader2 className="w-3 h-3 animate-spin inline ml-1" />}
+                    </label>
+                    {models.length > 0 ? (
+                      <select
+                        value={llmConfig.llm_model}
+                        onChange={(e) => setLlmConfig(prev => ({ ...prev, llm_model: e.target.value }))}
+                        className="input-field"
+                      >
+                        {models.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={llmConfig.llm_model}
+                        onChange={(e) => setLlmConfig(prev => ({ ...prev, llm_model: e.target.value }))}
+                        placeholder={llmConfig.llm_provider === 'anthropic' ? 'claude-sonnet-4-5-20250929' : 'gpt-4'}
+                        className="input-field"
+                      />
+                    )}
+                    <p className="text-xs text-text-tertiary mt-1">
+                      {models.length > 0 ? `${models.length} models detected` : 'Enter API key to auto-detect models'}
+                    </p>
                   </div>
                 </div>
               </div>
